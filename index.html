@@ -393,22 +393,6 @@
 
 <!--CODE-SLIDES-->
 
-<!-- stats -->
-<section class="slide" id="s24" data-title="Reading the numbers">
-  <h2>Reading the numbers</h2>
-  <p class="lead">Every request in the 30 days is counted, not a sample.</p>
-  <div class="grid g2">
-    <div class="card green"><h3>What the counts are</h3>
-      <ul>
-        <li>A count is the number of requests that returned a code, not the number of people.</li>
-        <li>One user can send several requests, so counts are higher than user numbers.</li>
-      </ul></div>
-    <div class="card"><h3>Volume bands used in this deck</h3>
-      <p><span class="tag vol">Very high</span> 100,000 or more · <span class="tag vol">High</span> 10,000 to 99,999 · <span class="tag vol">Medium</span> 1,000 to 9,999 · <span class="tag vol low">Low</span> 50 to 999 · <span class="tag vol low">Very low</span> fewer than 50.</p>
-      <p class="small">Very low volume means the code is real but too rare to compare.</p></div>
-  </div>
-</section>
-
 <!-- plan -->
 <section class="slide" id="s25" data-title="Plan: uplift stages">
   <h2>Negative endpoints and error screens: the plan</h2>
@@ -852,7 +836,7 @@
       '</div><div class="foot">'+fn+' Guideline: <a href="https://design-system.nhsapp.service.nhs.uk/patterns/error-page/" target="_blank" rel="noopener">NHS App design system, Error screens</a>. It also asks for no back link or breadcrumbs at the top, no jargon such as "500" or "bad request", no red warning text, and no blame.</div>';
     return sec;
   }
-  var marker=document.querySelector('section.slide[data-title="Reading the numbers"]');
+  var marker=document.querySelector('section.slide[data-title="Plan: uplift stages"]');
   CODES.forEach(function(c){marker.parentNode.insertBefore(codeSlide(c),marker)});
 
   /* extras */
