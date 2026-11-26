@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IM1 GP appointments: error screens and negative endpoints audit</title>
+<style>
+  :root{
+    --blue:#005eb8; --dark-blue:#003087; --pale-blue:#e8f1f8;
+    --text:#212b32; --secondary:#4c6272; --border:#d8dde0; --grey:#f0f4f5;
+    --red:#d5281b; --green:#007f3b; --yellow:#ffb81c; --focus:#ffeb3b; --purple:#330072; --orange:#ed8b00;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:"Frutiger W01",Arial,sans-serif;color:var(--text);background:var(--grey);font-size:18px;line-height:1.5;display:flex;flex-direction:column}
+  a:focus,button:focus,select:focus,textarea:focus,th:focus,tr:focus,figure:focus{outline:3px solid var(--focus);box-shadow:0 0 0 5px var(--text)}
+  header.bar{background:var(--blue);color:#fff;display:flex;align-items:center;gap:16px;padding:10px 24px;font-weight:700;flex:none}
+  header.bar .logo{background:#fff;color:var(--blue);font-style:italic;font-weight:700;font-size:22px;padding:0 8px;letter-spacing:-.5px}
+  header.bar .sp{flex:1}
+  header.bar span{white-space:nowrap}
+  header.bar .small{font-weight:400;font-size:15px;color:#fff}
+  #progress{height:6px;background:var(--dark-blue);flex:none}
+  #progress>i{display:block;height:100%;width:0;background:var(--yellow);transition:width .25s}
+  #stage{flex:1;overflow:hidden;display:flex;min-height:0}
+  #slides{flex:1;overflow:auto;background:#fff}
+  section.slide{display:none;padding:28px 48px 40px;max-width:1360px;margin:0 auto}
+  section.slide.active{display:block;animation:fade .2s}
+  @keyframes fade{from{opacity:.3}to{opacity:1}}
+  h1{font-size:46px;line-height:1.1;margin:0 0 16px}
+  h2{font-size:30px;line-height:1.2;margin:0 0 8px;border-left:8px solid var(--blue);padding-left:16px}
+  h3{font-size:19px;margin:18px 0 6px;color:var(--dark-blue)}
+  p.lead{font-size:21px;color:var(--secondary);margin:0 0 18px}
+  .title-slide{background:var(--blue);color:#fff;max-width:none!important;min-height:100%}
+  .title-slide>.in{max-width:1100px;margin:40px auto}
+  .title-slide h1{font-size:54px;color:#fff}.title-slide p{font-size:22px}
+  .title-slide .meta{margin-top:30px;font-size:17px}
+  .title-slide code{background:rgba(255,255,255,.18);color:#fff}
+  .grid{display:grid;gap:18px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+  .card{border:1px solid var(--border);border-top:6px solid var(--blue);padding:16px 18px;background:#fff}
+  .card.red{border-top-color:var(--red)}.card.green{border-top-color:var(--green)}.card.yellow{border-top-color:var(--yellow)}.card.purple{border-top-color:var(--purple)}
+  .card h3{margin-top:0}
+  .stat{font-size:38px;font-weight:700;line-height:1.1;color:var(--dark-blue)}
+  .stat-label{color:var(--secondary);font-size:15px}
+  table{border-collapse:collapse;width:100%;font-size:16px}
+  th{background:var(--pale-blue);text-align:left;padding:7px 9px;border-bottom:3px solid var(--blue);user-select:none;vertical-align:bottom}
+  th[data-sort]{cursor:pointer}th[data-sort]::after{content:" \2195";color:var(--secondary);font-size:12px}
+  th.asc::after{content:" \25B2"}th.desc::after{content:" \25BC"}
+  td{padding:6px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr.total td{font-weight:700;border-top:3px solid var(--text);background:var(--grey)}
+  tr.success td{background:#e6f3ec}
+  tr.click{cursor:pointer}tr.click:hover td{outline:2px solid var(--blue);outline-offset:-2px}
+  td.na{color:var(--secondary);font-style:italic;text-align:center}
+  #matrix td:nth-child(2){min-width:200px}#matrix td.ec{min-width:210px;font-size:14.5px}#matrix td:first-child{white-space:nowrap}
+  .tag{display:inline-block;font-size:12.5px;font-weight:700;padding:1px 8px;border-radius:2px;white-space:nowrap;cursor:help;margin:1px 2px 1px 0}
+  .tag.neg{background:#fff1cc;color:#594d00}.tag.tech{background:#fbe0dd;color:#8a1b12}.tag.noui{background:#e1e1e1;color:#212b32}
+  .tag.std{background:#d2e2f1;color:var(--dark-blue)}.tag.cust{background:#e9dff3;color:var(--purple)}.tag.ok{background:#cfe8d9;color:#005a2b}
+  .tag.id{background:#fff;border:1px solid var(--secondary);color:var(--text)}
+  .tag.vol{background:var(--dark-blue);color:#fff}.tag.vol.low{background:#768692}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .chip{font-size:14px;font-weight:700;padding:3px 10px;border:2px solid var(--border);color:#8a97a0;background:#fff;border-radius:14px;white-space:nowrap}
+  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .chip.mural{border-color:var(--blue);color:var(--blue)}
+  .callout{border-left:10px solid var(--blue);background:var(--pale-blue);padding:12px 16px;margin:14px 0;font-size:17px}
+  .callout.warn{border-left-color:var(--yellow);background:#fff8e0}
+  .callout.ok{border-left-color:var(--green);background:#e6f3ec}
+  .callout b.t{display:block;margin-bottom:2px}
+  code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;background:var(--grey);padding:1px 5px}
+  ul,ol{margin:6px 0;padding-left:22px}li{margin:3px 0}
+  .small{font-size:14px;color:var(--secondary)}
+  .foot{font-size:13px;color:var(--secondary);border-top:1px solid var(--border);margin-top:18px;padding-top:8px}
+  .foot a{color:var(--blue);cursor:pointer;text-decoration:underline}
+  /* code slides */
+  .head{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:8px}
+  .bigcode{font-size:58px;font-weight:700;line-height:1;color:var(--red);min-width:130px}
+  .bigcode.neg{color:#8a6100}.bigcode.noui{color:var(--secondary)}
+  .head .t{flex:1;min-width:280px}
+  .head h2{border:0;padding:0;margin:0 0 4px;font-size:28px}
+  .cols{display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:22px;align-items:start}
+  .block{margin-bottom:14px}
+  .block h3{margin:0 0 4px;font-size:16px;text-transform:uppercase;letter-spacing:.03em}
+  .reqs td,.reqs th{font-size:15px}
+  .gallery{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  figure.shot{margin:0;width:calc(50% - 7px);min-width:170px;position:relative;border:1px solid var(--border);background:#fff;padding:6px;cursor:zoom-in}
+  figure.shot img{width:100%;display:block;border:1px solid var(--border)}
+  figure.shot figcaption{font-size:13px;line-height:1.3;margin-top:5px}
+  figure.shot figcaption b{display:block;font-size:14px}
+  figure.shot .acts{display:flex;gap:4px;margin-top:5px}
+  figure.shot.big{width:100%}
+  .drop{width:calc(50% - 7px);min-width:170px;min-height:180px;border:3px dashed var(--secondary);background:var(--grey);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px;font-size:14px;color:var(--secondary);cursor:pointer}
+  .drop.over,figure.shot.over{border-color:var(--blue);background:var(--pale-blue)}
+  .drop b{color:var(--blue);font-size:15px}
+  .btn{font:inherit;font-size:15px;font-weight:700;border:2px solid transparent;padding:5px 12px;cursor:pointer;background:var(--green);color:#fff;box-shadow:0 3px 0 #00401e}
+  .btn.sec{background:#fff;color:var(--blue);border-color:var(--blue);box-shadow:0 3px 0 var(--blue)}
+  .btn.mini{font-size:12px;padding:1px 8px;box-shadow:none;border-width:1px}
+  .btn:active{transform:translateY(2px);box-shadow:none}
+  /* journey */
+  .journey{display:flex;gap:6px;align-items:stretch}
+  .jstep{flex:1;border:2px solid var(--blue);background:#fff;padding:12px;display:flex;flex-direction:column;gap:4px}
+  .jstep.dash{border-style:dashed;border-color:var(--secondary);color:var(--secondary)}
+  .jarrow{align-self:center;font-size:30px;color:var(--blue)}
+  .jstep h3{margin:0;font-size:17px}
+  .jstep .num{font-size:30px;font-weight:700;color:var(--dark-blue);line-height:1.1}
+  .stack{display:flex;height:22px;margin:4px 0;background:var(--grey)}
+  .stack>i{display:block;height:100%}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;margin-top:10px}
+  .legend i{display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:5px}
+  .seg{display:inline-flex;border:2px solid var(--blue);margin:4px 0 10px}
+  .seg button{background:#fff;color:var(--blue);border:0;font:inherit;font-size:15px;font-weight:700;padding:5px 12px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--blue);color:#fff}
+  .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+  .road{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
+  .totalbar{background:var(--pale-blue);border-left:10px solid var(--blue);padding:10px 16px;margin:0 0 14px;font-size:20px}
+  .totalbar b{font-size:30px;color:var(--dark-blue);margin-right:6px}
+  .stage{border:2px solid var(--border);background:#fff;padding:0 0 12px}
+  .stage .sh{display:flex;flex-direction:column;gap:2px;padding:12px 16px;color:#fff;position:relative}
+  .stage .sh .sn{font-size:14px;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
+  .stage .sh b{font-size:22px}
+  .stage.s1 .sh{background:var(--green)}.stage.s2 .sh{background:var(--blue)}.stage.s3 .sh{background:var(--purple)}
+  .stage.s1{border-color:var(--green)}.stage.s2{border-color:var(--blue)}.stage.s3{border-color:var(--purple)}
+  .st{align-self:flex-start;margin-top:4px;font-size:13px;font-weight:700;background:#fff;color:var(--text);padding:1px 10px;border-radius:12px}
+  .stage .sub{padding:10px 16px 4px;color:var(--secondary);font-size:15px;min-height:62px}
+  .step{display:flex;gap:12px;align-items:flex-start;margin:8px 12px;padding:10px 12px;border:2px solid var(--blue);background:#fff}
+  .step i{flex:none;width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid var(--blue);color:var(--blue);font-style:normal;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step b{display:block;font-size:17px}
+  .step div{font-size:15px;line-height:1.35}
+  .step.done{border-color:var(--green);background:#e6f3ec}.step.done i{background:var(--green);border-color:var(--green);color:#fff}
+  .tag.trk-q{background:#cfe8d9;color:#005a2b}.tag.trk-u{background:#e9dff3;color:#330072}
+  .reqs{width:auto;min-width:230px}.reqs th,.reqs td{font-size:13px;padding:2px 8px}
+  .pill{display:inline-block;background:var(--yellow);color:var(--text);font-size:12px;font-weight:700;padding:0 8px;border-radius:10px;margin-left:4px}
+  .stage.s3 .step{border-color:var(--purple)}.stage.s3 .step i{border-color:var(--purple);color:var(--purple)}
+  @media (max-width:1000px){.road{grid-template-columns:1fr}}
+  .cat figure{margin:0;border:1px solid var(--border);padding:6px;background:#fff;cursor:pointer}
+  .cat figure:hover{border-color:var(--blue)}
+  .cat img{width:100%;display:block;max-height:210px;object-fit:cover;object-position:top;border:1px solid var(--border)}
+  .cat figcaption{font-size:13px;line-height:1.25;margin-top:4px}
+  .cat figcaption b{font-size:15px;color:var(--red)}
+  /* notes drawer */
+  #notes{width:330px;flex:none;border-left:4px solid var(--blue);background:var(--pale-blue);display:none;flex-direction:column;padding:14px;gap:8px}
+  body.notes-open #notes{display:flex}
+  #notes h3{margin:0;font-size:18px}
+  #notes textarea{flex:1;min-height:180px;font:inherit;font-size:16px;padding:10px;border:2px solid var(--text);resize:none}
+  #notes .acts{display:flex;gap:8px;flex-wrap:wrap}
+  #toolbar{flex:none;background:#fff;border-top:4px solid var(--blue);display:flex;align-items:center;gap:10px;padding:8px 18px;flex-wrap:wrap}
+  #toolbar .sp{flex:1}
+  #toolbar select{font:inherit;font-size:15px;padding:5px;max-width:330px;border:2px solid var(--text)}
+  #count{font-weight:700;min-width:70px;text-align:center}
+  .dot{display:none;width:9px;height:9px;border-radius:50%;background:var(--red);margin-left:6px}
+  .dot.on{display:inline-block}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:20}
+  .modal.open{display:flex}
+  .modal .box{background:#fff;max-width:900px;width:92%;max-height:88vh;overflow:auto;padding:22px;border-top:8px solid var(--blue)}
+  .modal.lb .box{width:auto;max-width:92vw;text-align:center}
+  .modal.lb img{max-height:78vh;max-width:100%}
+  .ov{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:12px}
+  .ov button{text-align:left;font:inherit;font-size:15px;border:1px solid var(--border);border-left:6px solid var(--blue);background:var(--grey);padding:8px;cursor:pointer}
+  .ov button.cur{border-left-color:var(--yellow);background:#fff8e0}
+  kbd{background:var(--grey);border:1px solid var(--border);border-bottom-width:3px;padding:0 6px;font-family:inherit;font-size:14px}
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--text);color:#fff;padding:8px 16px;display:none;z-index:30}
+  @media (max-width:1000px){.g2,.g3,.g4,.cols{grid-template-columns:1fr}section.slide{padding:18px}h1{font-size:32px}.journey{flex-direction:column}.jarrow{transform:rotate(90deg)}header.bar .small{display:none}#notes{position:fixed;right:0;top:0;bottom:0;z-index:10}}
+  @media print{
+    html,body{height:auto;display:block;background:#fff}
+    header.bar,#progress,#toolbar,#notes,.seg,.modal,#toast,.acts,.drop{display:none!important}
+    #stage,#slides{display:block;overflow:visible}
+    section.slide,section.slide.active{display:block;page-break-after:always;padding:14px 22px;animation:none}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<header class="bar"><span class="logo">NHS</span><span>NHS App · IM1 GP appointments audit</span><span class="sp"></span><span class="small">Error screens and negative endpoints · Splunk, 1–30 Sep 2026</span></header>
+<div id="progress"><i></i></div>
+
+<div id="stage">
+<main id="slides" aria-live="polite">
+
+<!-- 1 -->
+<section class="slide title-slide" data-title="Title"><div class="in">
+  <h1>IM1 GP appointments: error screens and negative endpoints</h1>
+  <p>An audit of what users see when something goes wrong, or when a journey cannot continue, in the NHS App GP appointments service, with the volume of each code at each step of the journey.</p>
+  <p style="font-size:22px;margin:6px 0 0"><b>Mehrdad Atariani - Senior Service Designer</b></p>
+  <div class="meta">
+    Service: GP Appointments (IM1 GP systems: EMIS and TPP)<br>
+    Data window: 1 September 2026 00:00 to 30 September 2026 24:00 (30 days)<br>
+    Source: Splunk production logs · Screens and root causes: team Mural board<br><br>
+    <button class="btn" data-go="next" type="button">Start</button> &nbsp; <span class="small" style="color:#fff">Keys: ← → move · N notes · O overview · ? help</span>
+  </div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide" data-title="About this report">
+  <h2>About this report</h2>
+  <p class="lead">An audit of the error screens and negative endpoints in IM1 GP appointments (EMIS and TPP).</p>
+  <div class="grid g3">
+    <div class="card"><h3>What it shows</h3>
+      <ul>
+        <li>Each screen users see, and why.</li>
+        <li>How many requests returned each code, and at which journey step.</li>
+      </ul></div>
+    <div class="card red"><h3>Technical error</h3>
+      <p>Something is broken: the backend, the GP system, the connection or the session.</p></div>
+    <div class="card yellow"><h3>Negative endpoint</h3>
+      <p>An expected outcome that stops the user, such as no slots or booking limit reached. Nothing is broken.</p></div>
+  </div>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card green"><h3>Scope</h3>
+      <ul>
+        <li>Check available appointments, book and cancel. Manage appointments is listed, not measured.</li>
+        <li>Splunk production logs, 1 to 30 September 2026.</li>
+        <li>598 (GP session required) is included as a GP session step.</li>
+      </ul></div>
+    <div class="card purple"><h3>How to use this deck</h3>
+      <ul>
+        <li>The "Code by journey step" matrix maps every code to its step. Click a row to open that code.</li>
+        <li>Click a screen to enlarge it. Press N for notes.</li>
+      </ul></div>
+  </div>
+</section>
+
+<!-- why -->
+<section class="slide" data-title="Why this work, and the data">
+  <h2>Why this work is needed, and the data we used</h2>
+  <p class="lead">When something goes wrong in GP appointments, users need to know what happened and what to do next.</p>
+  <div class="grid g3">
+    <div class="card"><h3>Users are informed</h3><p>Users know what has happened and what to do when an error occurs.</p></div>
+    <div class="card red"><h3>Clinical safety</h3><p>The unhappy path is safe. An error can delay care, and users may have urgent needs.</p></div>
+    <div class="card green"><h3>Current patterns</h3><p>The latest NHS App error patterns are used, to meet the service manual requirements.</p></div>
+  </div>
+  <h3 style="margin-top:22px">The data: Splunk</h3>
+  <p style="margin:0 0 10px">Splunk is the tool we use to search the NHS App's production logs.</p>
+  <div class="grid g3">
+    <div class="card"><h3>What it records</h3>
+      <p>Every request from the app to the backend: which endpoint, which method, and which status code came back.</p></div>
+    <div class="card green"><h3>Why we use it</h3>
+      <ul>
+        <li>All production requests, not a sample.</li>
+        <li>Links each code to a journey step.</li>
+        <li>Shows how often each screen is triggered.</li>
+      </ul></div>
+    <div class="card yellow"><h3>Reading a count</h3>
+      <ul>
+        <li>A count is requests, not people.</li>
+        <li>2xx worked, 4xx the request could not be completed, 5xx a server fault.</li>
+        <li>GET reads, POST books, DELETE cancels.</li>
+      </ul></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" id="s9" data-title="Screen catalogue">
+  <h2>Screen catalogue</h2>
+  <p class="lead">Every screen captured on the Mural. Click a screen to open its code.</p>
+  <div class="cat" id="catalogue"></div>
+</section>
+
+<!-- screens today and obstacles -->
+<section class="slide" id="s4" data-title="Screens today and user obstacles">
+  <h2>The screens today, and the obstacles users face</h2>
+  <p class="lead">What the audit found across the screens, and what users can run into from checking an appointment to booking or cancelling it.</p>
+  <h3>The screens today</h3>
+  <div class="grid g3">
+    <div class="card"><h3>Inconsistent</h3>
+      <ul>
+        <li><b>Titles:</b> the same kind of fault shows "Cannot show appointments", "Cannot show GP appointments", "Cannot access GP appointments" or "The service is unavailable".</li>
+        <li><b>Content:</b> wording, order and links differ. "Try again" appears on some screens and not others.</li></ul></div>
+    <div class="card"><h3>Duplicated</h3>
+      <ul>
+        <li><b>Same screen, different causes:</b> 500, 502 and 504 share one screen, and 409 and 461 share the cancel screen.</li>
+        <li><b>Several screens, same cause:</b> 403 has two screens, and 401 has two versions.</li></ul></div>
+    <div class="card yellow"><h3>Errors that are not errors</h3>
+      <ul>
+        <li>No slots, 403, 409, 460 and 461 are expected outcomes, but some are presented as errors.</li></ul></div>
+    <div class="card red"><h3>Signposting gaps</h3>
+      <ul>
+        <li>Few screens point to another route such as an online consultation or "Ask your GP".</li>
+        <li>Users need to find their GP surgery's contact details, and many of these screens do not help them. The 403 cancel screen gives no way to contact the surgery.</li></ul></div>
+    <div class="card"><h3>Not reaching the right screen</h3>
+      <ul>
+        <li>400 and 599 often show the generic "service is unavailable" screen, and 400 offers "Try again", which cannot help.</li></ul></div>
+    <div class="card"><h3>Unclear outcome</h3>
+      <ul>
+        <li>After a failed booking or cancellation, users are not told whether it went through.</li></ul></div>
+  </div>
+  <h3 style="margin-top:22px">Obstacles users can face, from start to finish</h3>
+  <div class="grid g4">
+    <div class="card"><h3>1 Check appointments</h3>
+      <ul>
+        <li>No appointments available (200 + zero slots)</li>
+        <li>Online booking switched off by the practice (403)</li>
+        <li>GP session cannot be set up (598, 599)</li>
+        <li>GP system slow or failing (500, 502, 504)</li></ul></div>
+    <div class="card"><h3>2 Book</h3>
+      <ul>
+        <li>Slot taken by someone else (409)</li>
+        <li>Booking limit reached (460)</li>
+        <li>Booking fails (400, 500, 502, 504), and the user may not know if it went through</li></ul></div>
+    <div class="card"><h3>3 Cancel</h3>
+      <ul>
+        <li>Too late to cancel (461)</li>
+        <li>Already cancelled or passed (409)</li>
+        <li>Practice has disabled cancelling (403)</li>
+        <li>Cancellation fails (500, 502, 504)</li></ul></div>
+    <div class="card yellow"><h3>Any step</h3>
+      <ul>
+        <li>Signed out after inactivity (401)</li>
+        <li>Patient ID not recognised, TPP (467)</li></ul></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-title="The journey and request volumes">
+  <h2>The GP appointments journey and request volumes</h2>
+  <p class="lead">Requests at each step in the 30 days, split by what the user experienced.</p>
+  <div class="totalbar"><b>9,110,285</b> total requests across the measured steps<span class="small"> (manage appointments is not measured)</span></div>
+  <div class="journey" id="journey"></div>
+  <div class="legend">
+    <span><i style="background:var(--green)"></i>Success</span>
+    <span><i style="background:var(--yellow)"></i>Negative endpoint</span>
+    <span><i style="background:var(--orange)"></i>Technical error: GP session required (598)</span>
+    <span><i style="background:var(--red)"></i>Technical error: all other codes</span>
+  </div>
+  <p class="small">Each step adds up to its total. At check slots, "success" includes the responses with zero slots, which the code table counts as a negative endpoint. 598 and 599 are counted in the technical errors.</p>
+  <div class="callout"><b class="t">In short</b>
+  About half of successful slot responses have zero slots. Booking fails mostly through 409 and 460. Cancelling fails mostly through 461, 409 and 403.</div>
+</section>
+
+<!-- 4b -->
+<section class="slide" data-title="How requests are made">
+  <h2>How requests reach the backend and the GP system</h2>
+  <p class="lead">Each count is a request from the app to the NHS App backend. One request can trigger several calls to the GP system.</p>
+  <table>
+    <tr><th>Journey step</th><th>When the app sends it</th><th>Calls to the GP system</th></tr>
+    <tr><td><b>1 Check available appointments</b></td><td>When the user starts booking. The response is saved for the rest of the booking pages.</td><td>EMIS: 4 calls. TPP: 2 calls.</td></tr>
+    <tr><td><b>2 Book appointment</b></td><td>When the user confirms the booking.</td><td>1 call</td></tr>
+    <tr><td><b>3 Cancel appointment</b></td><td>When the user confirms the cancellation.</td><td>1 call</td></tr>
+    <tr><td><b>4 Manage appointments</b></td><td>When the user opens upcoming or past appointments.</td><td>Not measured</td></tr>
+  </table>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3>Several clicks, several requests</h3><p>Each Try again, refresh or return to the start sends a new request, and each is counted.</p></div>
+    <div class="card"><h3>Is it cached?</h3><p>The app saves the slots for the booking flow. The backend does not cache: every request goes to the GP system, so slots are always live.</p></div>
+    <div class="card"><h3>How IM1 works</h3><p>The app talks to the GP system (EMIS or TPP) live, through its backend. No copy of appointments is held. A GP session is needed first (598).</p></div>
+  </div>
+  <div class="callout"><b class="t">What this means for the counts</b>
+  Counts are requests, not users. One booking journey can send several slot requests but only one booking request.</div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-title="Code by journey step">
+  <h2>Where each code occurs: requests by journey step</h2>
+  <p class="lead">Click a row to open that code. Click a column heading to sort.</p>
+  <div class="seg" role="group" aria-label="Matrix view" id="mx-seg">
+    <button type="button" data-v="n" aria-pressed="true">Requests</button>
+    <button type="button" data-v="p" aria-pressed="false">% of step requests</button>
+  </div>
+  <table id="matrix"></table>
+  <p class="small">"Not measured" means this step is not in the Splunk data yet. Percentages are of all requests at that step. Check slots: the 200 + 0 row is a subset of Success, so it is not added to the total. Six requests returned 499 (the client closed the request) and are counted in the total but have no row.</p>
+  <div class="foot"><sup>1</sup> NHS App error code: the prefix of the service desk reference shown to the user, defined in the live backend code. 502 and 504 differ by GP system (EMIS, TPP); the others are the same for both. 599 takes the code of the underlying cause. <sup>2</sup> Screen ID: the content design reference (for example A-GP14). IDs are not in the code. They come from the Confluence "GP Appointments - Error screens" inventory (updated 14 Jul 2026) and the "NHS App screens content reference" pages (several last edited in 2022 to 2025), and from the Mural board. The screen shown depends on the journey step, not on the code or the GP system, so one code can have several screen IDs (for example 4k shows A-GP15b when checking, A-GP15a when viewing and A-GP14 when booking or cancelling). Which screen shows at each step was checked in the live code; see the "Live code check" notes on each code slide. SC33 is the generic "The service is unavailable" screen.</div>
+</section>
+
+<!-- guideline -->
+<section class="slide" id="s10" data-title="Guideline: NHS App error screens">
+  <h2>The guideline each screen is checked against</h2>
+  <p class="lead">Each code slide ends with how that screen should be, based on the NHS App design system error screen pattern.</p>
+  <div class="grid g2">
+    <div class="card"><h3>How an error screen is structured</h3>
+      <ol>
+        <li><b>Heading:</b> starts "There is a problem" plus the feature that has gone wrong.</li>
+        <li><b>Body text:</b> concise; how to resolve it, or more detail.</li>
+        <li><b>Button:</b> a secondary button for an action that may help (Try again, Log out). Straight after the related text.</li>
+        <li><b>Other options:</b> always say how to finish the task another way, often contacting the GP surgery. Use secondary card links for other NHS App services.</li>
+        <li><b>Urgent help:</b> "For urgent medical advice. Use 111 online or call 111."</li>
+        <li><b>Technical support:</b> "For technical support. Make a note of the error code xxxxx and then contact the NHS App team."</li>
+      </ol></div>
+    <div class="card yellow"><h3>Try again</h3>
+      <ul>
+        <li>Only when the problem is temporary and a retry is likely to work straight away.</li>
+        <li>Otherwise do not show it. "Try again later" can go in the text.</li>
+        <li>Users can select it once. If it fails, a follow-on screen says "There is still a problem …" and gives other ways to finish.</li>
+      </ul>
+      <h3>Do not</h3>
+      <ul>
+        <li>blame the user, or use exclamation marks or "oops"</li>
+        <li>add a back link or breadcrumbs at the top</li>
+        <li>use jargon such as "500", "504", "bad request"</li>
+        <li>use red text to warn people</li>
+        <li>offer too many links</li>
+        <li>show the app header or footer to a logged-out user</li>
+      </ul></div>
+  </div>
+  <div class="callout"><b class="t">Scope of the guideline</b>
+  The pattern is for unexpected problems. Negative endpoints are expected outcomes, so their screens apply the same principles: say what has happened, what to do next, give another way to finish, and signpost 111. GDS adds that, if a user is part way through a transaction, the page should say what has happened to their answers.</div>
+  <p class="small">Sources: <a href="https://design-system.nhsapp.service.nhs.uk/patterns/error-page/" target="_blank" rel="noopener">NHS App design system: Error screens</a> · <a href="https://design-system.service.gov.uk/patterns/problem-with-the-service-pages/" target="_blank" rel="noopener">GOV.UK Design System: There is a problem with the service pages</a></p>
+</section>
+
+<!--CODE-SLIDES-->
+
+<!-- stats -->
+<section class="slide" id="s24" data-title="Reading the numbers">
+  <h2>Reading the numbers</h2>
+  <p class="lead">Every request in the 30 days is counted, not a sample.</p>
+  <div class="grid g2">
+    <div class="card green"><h3>What the counts are</h3>
+      <ul>
+        <li>A count is the number of requests that returned a code, not the number of people.</li>
+        <li>One user can send several requests, so counts are higher than user numbers.</li>
+      </ul></div>
+    <div class="card"><h3>Volume bands used in this deck</h3>
+      <p><span class="tag vol">Very high</span> 100,000 or more · <span class="tag vol">High</span> 10,000 to 99,999 · <span class="tag vol">Medium</span> 1,000 to 9,999 · <span class="tag vol low">Low</span> 50 to 999 · <span class="tag vol low">Very low</span> fewer than 50.</p>
+      <p class="small">Very low volume means the code is real but too rare to compare.</p></div>
+  </div>
+</section>
+
+<!-- plan -->
+<section class="slide" id="s25" data-title="Plan: uplift stages">
+  <h2>Negative endpoints and error screens: the plan</h2>
+  <p class="lead">Start with the low-hanging fruit. Dev builds the technical errors while UCD redesigns the negative endpoints.</p>
+  <div class="road">
+    <div class="stage s1">
+      <div class="sh"><span class="sn">Stage 1</span><b>Review and audit</b><span class="st done">Done, except step 3</span></div>
+      <div class="sub">All GP appointments negative endpoints and technical error screens</div>
+      <div class="step done"><i>1</i><div><b>Explore and document</b>Confluence, the GitHub repo and Mokku mocks of staging-like environments</div></div>
+      <div class="step done"><i>2</i><div><b>Audit and validate</b>Screens, owners and root causes with dev teams, and the NHS guideline for each</div></div>
+      <div class="step todo"><i>3</i><div><b>Capture analytics</b>For existing screens, or the most visited <span class="pill">To do</span></div></div>
+    </div>
+    <div class="stage s2">
+      <div class="sh"><span class="sn">Stage 2</span><b>Quick uplifts</b><span class="st next">Next</span></div>
+      <div class="sub"><b>Technical errors:</b> 400, 500, 502, 504, 598, 599, 467. Apply the NHS error screen pattern and GDS guidance, uplift in a team day, then dev develops and releases.</div>
+      <div class="step"><i>4</i><div><b>Decide</b>Which screen IDs to uplift now, and which wait for appointment navigation work</div></div>
+      <div class="step"><i>5</i><div><b>Release</b>Develop and release the first uplifts</div></div>
+    </div>
+    <div class="stage s3">
+      <div class="sh"><span class="sn">In parallel, then after availability</span><b>UCD redesign</b><span class="st later">Needs UCD effort</span></div>
+      <div class="sub"><b>Negative endpoints:</b> 403, 200 + zero slots, 409, 461, 460. Redesign the experience and test it. 403 and zero slots follow the availability work.</div>
+      <div class="step"><i>6</i><div><b>Design</b>Uplift to the patterns and guidance, and test</div></div>
+      <div class="step"><i>7</i><div><b>Release</b>Develop and release the final uplifts</div></div>
+    </div>
+  </div>
+  <div class="legend" style="margin-top:18px">
+    <span><i style="background:var(--green)"></i>Done</span>
+    <span><i style="background:#fff;border:2px solid var(--blue)"></i>To do</span>
+  </div>
+</section>
+
+<!-- labels -->
+<section class="slide" id="s26" data-title="Labels and definitions">
+  <h2>Labels and definitions used in this deck</h2>
+  <table>
+    <tr><th style="width:230px">Label</th><th>Meaning</th></tr>
+    <tr><td><span class="tag tech">Technical error</span></td><td>Something is broken: the NHS App backend, the GP system, the connection or the session. Retrying may or may not help.</td></tr>
+    <tr><td><span class="tag neg">Negative endpoint</span></td><td>An expected, designed-for outcome in the normal journey (a rule or practice setting). Not a fault, but the user cannot continue.</td></tr>
+    <tr><td><span class="tag noui">Exception with no UI</span></td><td>A backend exception that has no dedicated screen in the app (467).</td></tr>
+    <tr><td><span class="tag neg">Not an error code</span></td><td>A successful response (200) that contains zero appointment slots. The screen is shown by the app, not driven by an error status.</td></tr>
+    <tr><td><span class="tag std">Standard HTTP</span></td><td>A code defined by the web standard (for example 403 Forbidden, 409 Conflict, 504 Gateway Timeout).</td></tr>
+    <tr><td><span class="tag cust">NHS App custom</span></td><td>A code defined by the NHS App backend so the app knows which screen to show: 460, 461, 467, 598, 599.</td></tr>
+    <tr><td><span class="tag id">NHS App error code (4a, 4c, 4f, 4g, 4h, 4k, 4e, 4t, ze, zt, 3o, 3p)</span></td><td>The prefix of the service desk reference, defined in the backend code. For 502 and 504 it depends on the GP system: EMIS (4e, ze) or TPP (4t, zt). For 599 it depends on the cause.</td></tr>
+    <tr><td><span class="tag id">Screen ID (A-GP11, A-GP13, A-GP14, A-GP15a, A-GP15b, AB04b, AB04c, AB05a, AB05c, AB07f, AB07g, AB07h, ES02, SC33)</span></td><td>The content design reference for the screen, from the Confluence screens content reference and error screens inventory. IDs are not in the code. One code can have several IDs because the screen depends on the step.</td></tr>
+    <tr><td><b>GET / POST / DELETE</b></td><td>The request type: GET reads (check slots, view appointments), POST creates (book), DELETE removes (cancel).</td></tr>
+    <tr><td><b>Journey step</b></td><td>1 Check available appointments (GET slots), 2 Book (POST), 3 Cancel (DELETE), 4 Manage appointments (GET appointments).</td></tr>
+    <tr><td><span class="tag trk-q">Uplift: quick (dev)</span> <span class="tag trk-u">Uplift: UCD redesign</span></td><td>Quick: technical errors that only need the NHS error screen pattern and GDS guidance. UCD redesign: negative endpoints that need the experience redesigned and tested.</td></tr>
+    <tr><td><span class="tag vol">Volume</span></td><td>Very high 100,000+ · High 10,000 to 99,999 · Medium 1,000 to 9,999 · Low 50 to 999 · Very low under 50.</td></tr>
+    <tr><td><b>Origin</b></td><td>Where the code is produced. For example, 504 is returned by the NHS App backend when the GP system does not respond in time; it is not specific to one screen.</td></tr>
+  </table>
+</section>
+
+</main>
+
+<aside id="notes" aria-label="Slide notes">
+  <h3>Notes: <span id="notes-title"></span></h3>
+  <textarea id="notes-text" placeholder="Type notes for this slide. They are saved in this browser automatically."></textarea>
+  <div class="acts">
+    <button class="btn sec mini" id="notes-clear" type="button">Clear this note</button>
+    <button class="btn sec mini" id="notes-export" type="button">Export all (.md)</button>
+    <button class="btn sec mini" id="notes-copy" type="button">Copy all</button>
+  </div>
+</aside>
+</div>
+
+<div id="toolbar">
+  <button class="btn sec" id="back" type="button">← Back</button>
+  <span id="count" aria-live="polite">1 / 1</span>
+  <button class="btn" id="next" type="button">Next →</button>
+  <select id="jump" aria-label="Jump to slide"></select>
+  <span class="sp"></span>
+  <button class="btn sec" id="btn-notes" type="button" aria-pressed="false">Notes<span class="dot" id="notes-dot"></span></button>
+  <button class="btn sec" id="btn-ov" type="button">Overview</button>
+  <button class="btn sec" id="btn-print" type="button">Print / PDF</button>
+  <button class="btn sec" id="btn-help" type="button" aria-label="Keyboard help">?</button>
+</div>
+
+<div class="modal" id="m-ov" role="dialog" aria-modal="true" aria-label="Slide overview"><div class="box">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">Overview</h2><button class="btn sec mini" data-close type="button">Close</button></div>
+  <div class="ov" id="ov-grid"></div>
+</div></div>
+<div class="modal" id="m-help" role="dialog" aria-modal="true" aria-label="Keyboard help"><div class="box">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">Keyboard help</h2><button class="btn sec mini" data-close type="button">Close</button></div>
+  <ul>
+    <li><kbd>→</kbd> / <kbd>Space</kbd> next · <kbd>←</kbd> previous · <kbd>Home</kbd>/<kbd>End</kbd> first/last</li>
+    <li><kbd>N</kbd> notes · <kbd>O</kbd> overview · <kbd>P</kbd> print · <kbd>Esc</kbd> close</li>
+    <li>Click a screen to enlarge it. To replace a screen: click Replace, drop an image on it, or hover it and paste (Ctrl/Cmd+V). Use the dashed box on a code slide to add an extra screen.</li>
+    <li>Images and notes are saved in this browser only. Keep the <code>screens</code> folder next to this file.</li>
+  </ul>
+</div></div>
+<div class="modal lb" id="m-lb" role="dialog" aria-modal="true" aria-label="Screen preview"><div class="box">
+  <div style="text-align:right"><button class="btn sec mini" data-close type="button">Close</button></div>
+  <img id="lb-img" alt=""><p id="lb-cap" style="margin:6px 0 0"></p>
+</div></div>
+<div id="toast" role="status"></div>
+<input type="file" id="file" accept="image/*" hidden>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var fmt=function(n){return n.toLocaleString('en-GB')};
+
+  /* ---------- data ---------- */
+  var STEPS=[
+    {k:'slots',n:'1 Check available appointments',s:'Check slots',m:'GET',ep:'/v1/patient/appointment-slots',tot:8500901},
+    {k:'book',n:'2 Book appointment',s:'Book',m:'POST',ep:'/v1/patient/appointments',tot:310499},
+    {k:'cancel',n:'3 Cancel appointment',s:'Cancel',m:'DELETE',ep:'/v1/patient/appointments',tot:298885},
+    {k:'manage',n:'4 Manage appointments',s:'Manage',m:'GET',ep:'/v1/patient/appointments',tot:null}
+  ];
+  var STEPNAME={slots:'Check available appointments',book:'Book appointment',cancel:'Cancel appointment',manage:'Manage appointments'};
+
+  var CODES=[
+  {id:'200z',code:'200 + 0',name:'No slots available to book',kind:'neg',label:'Negative endpoint',std:'Not an error code',internal:'None (not an error)',ids:'AB04b',
+   origin:'The GP system returned no slots, so the API returns an empty list with a 200 response',
+   counts:{slots:2742631},pct:{slots:'32.26%'},mural:['slots'],
+   summary:'The surgery has booking switched on, but no appointments are available to book online.',
+   screens:[{img:'200z',name:'No appointments available to book online at this time',step:'Check available appointments (GET)',id:'AB04b'}],
+   cause:'Not an error code reported to the backend. It appears when there are no appointments available and is part of the journey. The API returns an empty collection of slots if the GP system does not return a list of available slots.',
+   pain:['Patient does not know what to do when there is no appointment available.','Not clear when appointments would be available and how they would be notified.','Other routes such as an online consultation (OLC) are offered under "What you can do next", but the labels are not clear enough for users to recognise them.'],
+   need:['Know where to go and what to do on the NHS App when there is no appointment available to book directly, so they can get the care they need.'],
+   extra:'EMIS: 1,856,435 (51.46%) · TPP: 886,196 (48.69%) of successful slot responses with a logged slot count. Median free slots: EMIS 0, TPP 1.'},
+  {id:'403',code:'403',name:'Appointment booking / cancellation disabled',kind:'neg',label:'Negative endpoint',std:'Standard HTTP',internal:'4c',ids:'—',
+   origin:'The GP system or the GP practice setting does not give the patient permission',
+   counts:{slots:454714,book:0,cancel:1172},pct:{slots:'5.35%',book:'0.00%',cancel:'0.39%'},mural:['slots','book','cancel','manage'],
+   summary:'Direct booking or cancelling is not available to this patient.',
+   screens:[{img:'403a',name:'Cannot book GP appointments online',step:'Check available appointments (GET) and Book (POST)'},{img:'403b',name:'Cannot cancel appointments online',step:'Cancel (DELETE). TPP practices can disable cancellation'}],
+   cause:'Some GP systems completely switch off direct booking and do not give permission to patients accessing the appointments. The same applies to view upcoming/historic, book and cancel. For TPP users, cancellation of an upcoming appointment can be disabled by their GP practice.',
+   pain:['Patient does not know why there is no appointment available and how to find a solution.','They usually phone the surgery, which is hard because of long queues and working hours.','"Additional GP services" is not clear or familiar, and it is unclear where it lands the user.','No prompt way to contact the GP if the user cannot cancel or needs to reschedule, so they walk in or call again.'],
+   need:['Know why this happens: it is a GP practice configuration choice, not a fault.','Know how frequent it is, when it will be resolved and what actions are needed to book or cancel.']},
+  {id:'409',code:'409',name:'Appointment no longer exists / not cancellable',kind:'neg',label:'Negative endpoint',std:'Standard HTTP',internal:'4f',ids:'—',
+   origin:'The GP system rejects the request because the slot or appointment is no longer in a usable state',
+   counts:{book:22847,cancel:6153},pct:{book:'7.36%',cancel:'2.06%'},mural:['book','cancel'],
+   summary:'The slot was taken when booking, or the appointment can no longer be cancelled.',
+   screens:[{img:'409a',name:'This appointment is no longer available',step:'Book (POST)'},{img:'409b',name:'Cannot cancel appointment',step:'Cancel (DELETE). Check again for EMIS'}],
+   cause:'Booking: two users (or the practice) act on the same slot at the same time and the GP system rejects the second request. Cancelling: the appointment record has changed since the user last viewed it, it was cancelled through another channel, or the appointment time has passed.',
+   pain:['Patients cannot see appointments cancelled by their surgery, so they open manage appointments, find none, and are left unsure what to do.','This is an expected business outcome, but no guidance or support is given to the user.'],
+   need:['Understand the slot or appointment is genuinely gone and retrying the same action will not help.','Have a clear next step: pick a different slot (booking); understand there is nothing to cancel (cancelling).','Be reassured it is not their fault: someone else was faster, or the time has passed.']},
+  {id:'460',code:'460',name:'Maximum bookable appointments reached',kind:'neg',label:'Negative endpoint',std:'NHS App custom',internal:'4g',ids:'—',
+   origin:'NHS App backend rule, applying the GP practice limit on pending appointments',
+   counts:{book:10459},pct:{book:'3.37%'},mural:['book'],
+   summary:'The patient has reached the limit of pending appointments the practice allows online.',
+   screens:[{img:'460',name:'Cannot book any more appointments right now',step:'Book (POST). The only place this occurs'}],
+   cause:'The patient has already booked the maximum number of pending (future) appointments that their GP practice allows through online booking. It is a deliberate practice-level configuration, not a technical constraint.',
+   pain:['This should not look like an error. Error styling implies a problem and could nudge someone to contact their GP or cause distress.','There is no appropriate resolution; the user is only told to contact the GP.','Other services such as manage appointments may be affected by reaching the limit, and users there have no clue why or how to solve it.'],
+   need:['Understand it is a practice-imposed policy limit, not a system fault or something they did wrong.','Know why the surgery caps online appointments.','Have a clear resolution path: use an online consultation for urgent needs, cancel an unneeded appointment to free a slot, or contact the surgery.']},
+  {id:'461',code:'461',name:'Too late to cancel an appointment',kind:'neg',label:'Negative endpoint',std:'NHS App custom',internal:'4h',ids:'—',
+   origin:'NHS App backend, applying the GP practice cancellation cut-off (TPP)',
+   counts:{cancel:8055},pct:{cancel:'2.70%'},mural:['cancel'],
+   summary:'The cancellation falls inside the practice\'s cut-off window.',
+   screens:[{img:'461',name:'Cannot cancel appointment',step:'Cancel (DELETE), TPP'}],
+   cause:'The GP practice has configured a cut-off window in its clinical system, and the user\'s cancellation attempt fell inside it. Messages seen in the logs include "This service does not allow appointment cancellations within 2 hour(s)" and "within 48 hour(s)" of the start time. Practices may not know the setting exists.',
+   pain:['There is no single cut-off time: every GP sets its own, and the backend receives it.','Content may not clearly guide or advise the user what to do.','It is not clear how and where to get the GP surgery contact.'],
+   need:['Understand the specific reason: too close to the appointment time.','A clear immediate action: contact the surgery directly, since the app cannot cancel this close to the appointment.','Not to feel at fault: it is a time-based policy rule.']},
+  {id:'400',code:'400',name:'Bad request',kind:'tech',label:'Technical error',std:'Standard HTTP',internal:'4a',ids:'A-GP13',
+   origin:'The GP system (EMIS/TPP) returns a bad request, surfaced by the NHS App backend',
+   counts:{book:593},pct:{book:'0.19%'},mural:['slots','book','cancel'],
+   summary:'The request sent to the GP system was malformed or incomplete.',
+   screens:[{img:'400a',name:'Cannot access GP appointments',step:'Book (POST), after confirming a booking',id:'A-GP13'},{img:'400b',name:'The service is unavailable',step:'Generic handling: Get an appointment and Delete an appointment (Mural)'}],
+   cause:'An unexpected technical backend or integration-layer fault, not a user mistake: a malformed or incomplete request body on POST/DELETE calls, or a query string parameter outside the expected format on GET calls.',
+   pain:['400 is flagged as "something\'s gone wrong, retrying won\'t help", yet the AS-IS screens still use generic "try again" and "go back" language.','The user does not get the right call to action, and there is no signpost to other options.','There is no error context for the user to contact support.'],
+   need:['Know what has gone wrong and that it is not their mistake.','Understand that retrying will not help, unlike 409 or 460.','Get a concrete action: contact the surgery directly for urgent needs, or use 111.','Have the context of the error to give to support.']},
+  {id:'401',code:'401',name:'User session missing / expired (global)',kind:'tech',label:'Technical error',std:'Standard HTTP',internal:'None',ids:'—',
+   origin:'NHS App sign-in and session layer. Not a GP system response',
+   counts:{slots:3359,book:19,cancel:16},pct:{slots:'0.04%',book:'0.01%',cancel:'0.01%'},mural:['slots','book','cancel','manage'],
+   summary:'The user\'s session has expired or is missing, so they are signed out.',
+   screens:[{img:'401',name:'You have been logged out',step:'Any step (global)'}],
+   cause:'Session timeout: the NHS App logs users out after a period of inactivity. It originates from the NHS App\'s own authentication layer and is handled globally, not by the GP appointments journey.',
+   pain:['Two versions of this screen exist, one with a Log in button and one with Continue. Which is needed?','Because a global filter handles it, in-progress data such as a booking in progress is lost with only a warning, not preserved.'],
+   need:['Understand why they were signed out rather than assume something is broken.','Be told if unsaved information was lost, so they know to re-enter it.','Have a clear, low-friction way back in.','Know this is normal security behaviour, not a fault.']},
+  {id:'500',code:'500',name:'Unexpected backend error',kind:'tech',label:'Technical error',std:'Standard HTTP',internal:'4k',ids:'GP15-b, GP14',
+   origin:'NHS App backend',
+   counts:{slots:3,book:1,cancel:1},pct:{slots:'0.00%',book:'0.00%',cancel:'0.00%'},mural:['slots','book','cancel'],
+   summary:'An unhandled fault inside the NHS App backend.',
+   screens:[{img:'500a',name:'Cannot show appointments',step:'Check available appointments (GET)',id:'GP15-b'},{img:'500b',name:'Cannot access GP appointments',step:'Book (POST) and Cancel (DELETE)',id:'GP14'}],
+   cause:'Unhandled exception or fault inside the NHS App\'s own backend during request processing.',
+   pain:['Inconsistent screen titles across journeys ("access" vs "show") could confuse users moving between appointment features, even if intentional.'],
+   need:['Understand it is a temporary technical fault, not in their control.','A "try again" option, since retrying may help for transient backend faults.','A fallback if retrying keeps failing: contact the surgery, or 111 for urgent needs.','An error code reference to quote if they need to escalate.']},
+  {id:'502',code:'502',name:'(Supplier) bad response',kind:'tech',label:'Technical error',std:'Standard HTTP',internal:'EMIS 4e, TPP 4t',ids:'GP15-b, GP14',
+   origin:'The GP system sent an invalid or error response; the NHS App backend returns 502',
+   counts:{slots:624,book:29,cancel:36},pct:{slots:'0.01%',book:'0.01%',cancel:'0.01%'},mural:['slots','book','cancel','manage'],
+   summary:'The GP system returned something the NHS App could not use.',
+   screens:[{img:'502a',name:'Cannot show appointments',step:'Check available (GET), confirm delete, view upcoming (GET)',id:'GP15-b'},{img:'502b',name:'Cannot access GP appointments',step:'Book (POST)',id:'GP14'}],
+   cause:'Two different underlying causes collapse into the same 502. (1) Supplier system fault: the GP system (EMIS, TPP or Vision) itself returned an invalid or error response. (2) Rate limiting: the GP system returned 429 (too many requests), which the NHS App backend re-maps to 502 before it reaches the front end. This is not shown to the user, so the screen cannot tell a true fault from rate limiting.',
+   pain:['Classified "unexpected (retry)" like 500, which masks the rate-limit cause. That is arguably a systemic issue (GP system under load) and generic retry wording may not help.','Screens are inconsistent within the "view upcoming/previous appointments" journey depending on how the 502 arose.'],
+   need:['Understand it is a temporary, non-user-caused fault, know if retrying is worthwhile, and have a fallback.','Not be blamed or confused when the issue is GP-system capacity.']},
+  {id:'504',code:'504',name:'Timeout',kind:'tech',label:'Technical error',std:'Standard HTTP',internal:'EMIS ze, TPP zt',ids:'GP20 / AB04c, GP14',
+   origin:'NHS App backend, when the GP system does not reply in time',
+   counts:{slots:7816,book:422,cancel:371},pct:{slots:'0.09%',book:'0.14%',cancel:'0.12%'},mural:['slots','book','cancel'],
+   summary:'The GP system did not respond within the time the NHS App allows.',
+   screens:[{img:'504a',name:'Cannot show GP appointments',step:'Check available appointments (GET)',id:'GP20 / AB04c'},{img:'504b',name:'Cannot access GP appointments',step:'Book (POST)',id:'GP14'},{img:'504c',name:'Cannot access GP appointments',step:'Cancel (DELETE)',id:'GP14'}],
+   cause:'The GP clinical system failed to respond within the timeout window the NHS App backend allows (documented elsewhere as about 10 seconds for GP session establishment). It is a connectivity or latency issue on the supplier side, distinct from 502 ("bad response received") and 500 (a fault in the NHS App\'s own backend).',
+   pain:['Same treatment as 500 and 502, although it is a functionally different failure mode (timeout vs bad response vs internal fault). The content does not distinguish them for the user.'],
+   need:['Same as 500 and 502: recognise it is a backend or connectivity fault, not their mistake.','Understand a timeout is often transient, so retrying is reasonable.','A fallback if retries keep failing: contact the surgery or 111.'],
+   extra:'What it means: the NHS App backend called the GP system and got no answer in time, so it returned 504 to the app. It is not tied to one screen. Any step that calls the GP system can return it, and in this data it appears at check slots, book and cancel.'},
+  {id:'598',code:'598',name:'GP session required (on demand)',kind:'tech',label:'Technical error',std:'NHS App custom',internal:'3o',ids:'—',
+   origin:'NHS App backend: the user\'s sign-in does not include the GP scopes yet',
+   counts:{slots:2586450,book:0,cancel:0},pct:{slots:'30.43%',book:'0.00%',cancel:'0.00%'},mural:[],
+   summary:'The user has no GP session yet, so the app creates one on demand and returns them to the page.',
+   screens:[{img:'598',name:'Loading page ("Page Loading")',step:'Shown while the app connects to the GP system. Illustration, not captured from the app'}],
+   noScreen:'',
+   cause:'The user is signed in but their session does not yet include a GP session (the GP scopes). The backend returns 598 together with the scopes required, and the app starts a GP session on demand: loading page, connection step (native app or web), then back to the original page. The same handling applies to any request that needs a GP session, so 598 also occurs outside GP appointments (prescriptions, medical record, linked profiles, organ donation). It concerns the same GP session as 599.',
+   pain:['No dedicated screen or content: the user only sees a loading page and is returned.','If creating the GP session fails, the user reaches a GP session error screen instead (see 599).','A brief generic "The service is unavailable" screen may show while the redirect starts. This comes from the code and needs validation.'],
+   need:['To be agreed with the team: this code has no card on the Mural yet.'],
+   extra:'598 is raised whenever the app has no GP session for the user and has to create one on demand. By design the app retries the request once the session exists, so many of these requests end well. The count is requests, not users. It is the largest non-200 response at the check-slots step.'},
+  {id:'599',code:'599',name:'GP session unavailable',kind:'tech',label:'Technical error',std:'NHS App custom',internal:'3p, 3c, 3e, 3t, 3ee or 3y (the code of the cause)',ids:'—',
+   origin:'NHS App backend, when the GP system\'s session response cannot be used',
+   counts:{slots:18321,book:9,cancel:0},pct:{slots:'0.22%',book:'0.00%',cancel:'0.00%'},mural:['slots','manage','cancel'],
+   summary:'The app could not establish a session with the GP system.',
+   screens:[{img:'599',name:'The service is unavailable',step:'Check available appointments (GET) and manage appointments (GET). The same error exists for delete'}],
+   cause:'Unable to establish a GP session because the GP system\'s response could not be parsed: the backend called EMIS or TPP to authenticate the patient\'s session and the response came back in a format the NHS App\'s parser did not recognise, so it could not extract a valid session.',
+   pain:['The screen only says "The service is unavailable" and that the user can try loading GP appointments again, with a Try again button.'],
+   need:['Know it is a temporary problem and be able to try again.','A way to contact the surgery directly if it continues.'],
+   extra:'Related code: 598 (GP session required) is the step that starts a GP session on demand. Both codes concern the GP session.'},
+  {id:'467',code:'467',name:'Invalid patient ID (TPP)',kind:'noui',label:'Exception with no UI',std:'NHS App custom',internal:'None (no error reference)',ids:'—',
+   origin:'TPP InvalidPatientId exception',
+   counts:{slots:24},pct:{slots:'0.00%'},mural:['slots','manage','cancel'],
+   summary:'A TPP-specific exception with no dedicated front-end screen.',
+   screens:[{img:'467',name:'The service is unavailable',step:'Captured on the Mural for this code; needs validation'}],
+   cause:'Invalid patient ID is a TPP-specific exception with no front-end UI (marked on the Mural as needing validation). It occurs only on GET requests: get available appointment slots and get existing appointments.',
+   pain:['No dedicated screen exists, so what the user sees is unconfirmed.'],
+   need:['Confirm what the user sees and whether a dedicated screen is needed.']}
+  ];
+
+  /* ---------- helpers ---------- */
+  function total(c){var t=0;for(var k in c.counts){t+=c.counts[k]||0}return t}
+  function vol(n){return n>=100000?['Very high','']:n>=10000?['High','']:n>=1000?['Medium','']:n>=50?['Low','low']:['Very low','low']}
+  function kindTag(c){var cls=c.kind==='neg'?'neg':c.kind==='tech'?'tech':'noui';return '<span class="tag '+cls+'" title="'+(c.kind==='neg'?'Expected outcome of the journey; not a fault':c.kind==='tech'?'Something is broken (backend, GP system, connection or session)':'Backend exception with no dedicated screen')+'">'+c.label+'</span>'}
+  function stdTag(c){var cls=c.std==='NHS App custom'?'cust':c.std==='Standard HTTP'?'std':'neg';var tt=c.std==='NHS App custom'?'Code defined by the NHS App backend':c.std==='Standard HTTP'?'Code defined by the HTTP standard':'A successful 200 response with zero slots';return '<span class="tag '+cls+'" title="'+tt+'">'+c.std+'</span>'}
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+
+  /* ---------- journey slide ---------- */
+  (function(){
+    var data=[
+      {k:'slots',ok:5429584,neg:454714,ses:2586450,tech:30153},
+      {k:'book',ok:276120,neg:33306,ses:0,tech:1073},
+      {k:'cancel',ok:283081,neg:15380,ses:0,tech:424}
+    ];
+    var h='';
+    STEPS.forEach(function(s,i){
+      var d=data.filter(function(x){return x.k===s.k})[0];
+      if(i)h+='<div class="jarrow" aria-hidden="true">→</div>';
+      if(d){
+        var t=s.tot;function p(v){return (100*v/t).toFixed(2)}
+        h+='<div class="jstep"><h3>'+s.n+'</h3><div class="small"><code>'+s.m+' '+s.ep+'</code></div><div class="num">'+fmt(t)+'</div><div class="small">requests · '+(100*t/9110285).toFixed(1)+'% of all</div>'+
+          '<div class="stack" title="Success / negative endpoint / GP session required (598) / technical error"><i style="width:'+p(d.ok)+'%;background:var(--green)"></i><i style="width:'+Math.max(p(d.neg),0.6)+'%;background:var(--yellow)"></i>'+(d.ses?'<i style="width:'+p(d.ses)+'%;background:var(--orange)"></i>':'')+'<i style="width:'+Math.max(p(d.tech),0.6)+'%;background:var(--red)"></i></div>'+
+          '<div class="small"><b style="color:var(--green)">'+p(d.ok)+'%</b> success · <b style="color:#8a6100">'+p(d.neg)+'%</b> negative'+(d.ses?' · <b style="color:#b36b00">'+p(d.ses)+'%</b> technical: GP session (598)':'')+' · <b style="color:var(--red)">'+p(d.tech)+'%</b> '+(d.ses?'other technical':'technical')+'</div>'+
+          '<div class="small">'+fmt(d.ok)+' · '+fmt(d.neg)+(d.ses?' · '+fmt(d.ses):'')+' · '+fmt(d.tech)+'</div></div>';
+      }else{
+        h+='<div class="jstep dash"><h3>'+s.n+'</h3><div class="small"><code>'+s.m+' '+s.ep+'</code></div><div class="num" style="color:var(--secondary)">Not measured</div><div class="small">Screens recorded on the Mural; no request counts yet.</div></div>';
+      }
+    });
+    $('journey').innerHTML=h;
+  })();
+
+  /* ---------- matrix ---------- */
+  var mview='n';
+  function renderMatrix(){
+    var EC={'200z':'No error code','403':'EMIS 4c · TPP 4c','409':'EMIS 4f · TPP 4f','460':'EMIS 4g · TPP 4g','461':'EMIS 4h · TPP 4h','400':'EMIS 4a · TPP 4a','401':'No error code','500':'EMIS 4k · TPP 4k','502':'EMIS 4e · TPP 4t','504':'EMIS ze · TPP zt','598':'3o (EMIS and TPP)','599':'3p, 3c, 3e, 3t, 3ee or 3y (the code of the cause)','467':'No error code'};
+    var SIDS={'200z':'Check: AB04b','403':'Check, book, manage: A-GP11<br>Cancel: AB07f','409':'Book: AB05a<br>Cancel: AB07h','460':'Book: AB05c','461':'Cancel: AB07g','400':'Book: A-GP13 / A-GP14<br>Others: SC33','401':'All steps: ES02','500':'Check: A-GP15b<br>Book, cancel: A-GP14<br>Manage: A-GP15a','502':'Check: A-GP15b<br>Book, cancel: A-GP14<br>Manage: A-GP15a','504':'Check: AB04c<br>Book, cancel: A-GP14<br>Manage: A-GP09','598':'None (loading page)','599':'All steps: SC33<br>(A-GP19 in older docs)','467':'None'};
+    var h='<thead><tr><th data-sort="text">Code</th><th data-sort="text">Screen / outcome</th><th>NHS App error code<sup>1</sup><br><span class="small">EMIS · TPP</span></th><th>Screen ID<sup>2</sup><br><span class="small">by step</span></th><th>Type</th>';
+    STEPS.forEach(function(s){h+='<th class="n" data-sort="num">'+s.n+'<br><span class="small">'+s.m+(s.tot?' · '+fmt(s.tot)+' req.':'')+'</span></th>'});
+    h+='<th class="n" data-sort="num">Total</th></tr></thead><tbody>';
+    h+='<tr class="success"><td><b>200 / 201 / 204</b></td><td>Success<br><span class="small">At check slots this includes the 200 + 0 row below</span></td><td class="na">–</td><td class="na">–</td><td><span class="tag ok">success</span></td><td class="n">'+(mview==='n'?'5,429,584':'63.87%')+'</td><td class="n">'+(mview==='n'?'276,120':'88.93%')+'</td><td class="n">'+(mview==='n'?'283,081':'94.71%')+'</td><td class="na">Not measured</td><td class="n">'+(mview==='n'?fmt(5429584+276120+283081):'')+'</td></tr>';
+    CODES.forEach(function(c){
+      var heat=function(pc){var a=Math.min(.6,pc/8);return 'background:rgba(0,94,184,'+a.toFixed(2)+')'};
+      h+='<tr class="click" tabindex="0" data-open="c-'+c.id+'"><td><b>'+c.code+'</b></td><td>'+c.name+(c.id==='200z'?'<br><span class="small">Part of the Success count, not added again</span>':'')+'</td><td class="ec"><b>'+EC[c.id]+'</b></td><td class="ec">'+SIDS[c.id]+'</td><td>'+kindTag(c)+'</td>';
+      STEPS.forEach(function(s){
+        if(s.k==='manage'){h+='<td class="na">Not measured</td>';return}
+        var v=c.counts[s.k];
+        if(v===undefined){h+='<td class="n" style="color:#b0b9c0">–</td>';return}
+        var pc=100*v/s.tot;
+        var txt=mview==='n'?fmt(v):(c.id==='200z'?pc.toFixed(2)+'%':pc.toFixed(2)+'%');
+        h+='<td class="n" data-v="'+v+'" style="'+(v?heat(pc):'')+'">'+txt+'</td>';
+      });
+      h+='<td class="n" data-v="'+total(c)+'">'+fmt(total(c))+'</td></tr>';
+    });
+    h+='</tbody><tfoot><tr class="total"><td colspan="5"><b>Total requests at the step</b><br><span class="small">Success + every code except 200 + 0 (already inside Success). Matches the journey slide.</span></td>';
+    STEPS.forEach(function(s){h+=s.tot?'<td class="n"><b>'+fmt(s.tot)+'</b></td>':'<td class="na">Not measured</td>'});
+    h+='<td class="n"><b>'+fmt(STEPS.reduce(function(a,s){return a+(s.tot||0)},0))+'</b></td></tr></tfoot>';
+    $('matrix').innerHTML=h;
+    sortable($('matrix'));
+  }
+  $('mx-seg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;mview=b.getAttribute('data-v');[].forEach.call($('mx-seg').children,function(x){x.setAttribute('aria-pressed',x===b)});renderMatrix()});
+
+  /* ---------- images ---------- */
+  var IMGKEY='gp-audit-img-v1:', EXTRAKEY='gp-audit-extra-v1:';
+  function getImg(key,def){try{return localStorage.getItem(IMGKEY+key)||def}catch(e){return def}}
+  function toDataURL(file,cb){
+    var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var w=Math.min(720,im.width),h=im.height*w/im.width,c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);cb(c.toDataURL('image/jpeg',.85))};im.src=r.result};r.readAsDataURL(file)
+  }
+  function store(k,v){try{localStorage.setItem(k,v);return true}catch(e){toast('Browser storage is full; image kept for this session only');return false}}
+  function figureHTML(key,src,name,step,id,extra){
+    return '<figure class="shot" tabindex="0" data-key="'+key+'"'+(extra?' data-extra="'+extra+'"':'')+'><img src="'+src+'" alt="'+esc(name)+'"><figcaption><b>'+esc(name)+'</b>'+(id?'<span class="small">Screen ID: '+esc(id)+'</span><br>':'')+esc(step)+'</figcaption><div class="acts"><button type="button" class="btn sec mini" data-act="replace">Replace</button>'+(extra?'<button type="button" class="btn sec mini" data-act="remove">Remove</button>':'<button type="button" class="btn sec mini" data-act="reset">Reset</button>')+'</div></figure>';
+  }
+  var pending=null;
+  $('file').addEventListener('change',function(){var f=this.files[0];if(f&&pending){var p=pending;toDataURL(f,function(u){p(u)})}this.value=''});
+  function pick(cb){pending=cb;$('file').click()}
+
+  /* ---------- code slides ---------- */
+  /* legacy screen IDs (Confluence screens content reference and error screens inventory; not in the code) */
+  var IDMAP={'200z':'AB04b','403':'A-GP11, AB07f','409':'AB05a, AB07h','460':'AB05c','461':'AB07g','400':'A-GP13, A-GP14','401':'ES02','500':'A-GP15b, A-GP14, A-GP15a','502':'A-GP15b, A-GP14, A-GP15a','504':'AB04c, A-GP14, A-GP09','598':'None','599':'SC33, A-GP19','467':'None'};
+  var SID={'200z':'AB04b','403a':'A-GP11','403b':'AB07f','409a':'AB05a','409b':'AB07h','460':'AB05c','461':'AB07g','400a':'A-GP13 / A-GP14','400b':'SC33','401':'ES02','500a':'A-GP15b','500b':'A-GP14','502a':'A-GP15b (A-GP15a when viewing)','502b':'A-GP14','504a':'AB04c (Mural also lists A-GP20)','504b':'A-GP14','504c':'A-GP14','599':'SC33','598':'None'};
+  /* UX audit: live-code notes, findings and extra needs */
+  var UX={
+   '200z':{note:'A second no-slots screen exists for a filter that returns nothing (AB04a, in-line on the booking page). It is not counted here because it is not an API response.',
+     ux:['The live screen already offers "What you can do next" (Ask your GP for advice, Additional GP services, Use NHS 111 online). The gap is the route labels, not a missing list: "Additional GP services" is named differently from the same service elsewhere and is hard to recognise.','The screen does not say why there are no appointments, or when new ones are released.'],
+     needAdd:['Know whether to check back later or contact the surgery now, and when appointments are usually released.']},
+   '403':{note:'The same 403 shows two screens by step: "Cannot book GP appointments online" (A-GP11) when checking, booking or viewing, and "Cannot cancel appointments online" (AB07f) when cancelling. Confluence records two versions of the cancel screen for the same trigger. An older cancel component with different wording is in the code but no page uses it.',
+     ux:['The cancel screen is a dead end: no phone number, no contact link and no "What you can do next" options, unlike the booking version.','At check slots the user cannot tell whether online booking is off for everyone or only for them (the Mural lists a possible identity trigger).','403 is the largest negative endpoint after no slots (455,886), so wording changes here reach the most users.'],
+     needAdd:['See the surgery contact details on the screen, not only advice to contact the surgery.']},
+   '409':{note:'At cancellation the app treats 409 like "too late to cancel", so AB07h (409) and AB07g (461) show the same screen with the same copy ("It\'s too late to cancel this appointment online"), even when the real reason is that the appointment was already cancelled, has passed or cannot be found.',
+     ux:['At booking the screen has only a Back link, with no direct way to choose another slot.','At cancelling, the too-late message can be wrong: a user whose appointment was already cancelled is told it is too late.','409 is the second largest negative endpoint at booking (22,847), so many users have to repeat their selection.'],
+     needAdd:['See the real reason a cancellation failed (already cancelled, in the past, not found), not a generic too-late message.','Go straight back to the available slots to choose again.']},
+   '460':{note:'',
+     ux:['The screen is not error-styled, which matches the team view. But the text tells users to go back to see and cancel their appointments, with no link to them.','It does not say how many appointments the practice allows online.'],
+     needAdd:['Reach existing appointments in one step, to cancel one.']},
+   '461':{note:'461 and 409 at cancellation show the same screen (AB07g and AB07h).',
+     ux:['The message says it is too late but not what the cut-off is, even though the backend receives it.','There is no surgery phone number or link, only advice to call.','Practices set different cut-offs, so the same user can be treated differently at different surgeries without explanation.'],
+     needAdd:['See the cut-off that applies to my surgery.']},
+   '400':{note:'The "Cannot access GP appointments" screen for 400 (A-GP13) is reached only when booking. At check slots, cancel and view appointments, the app classifies 400 as "service unavailable" first, so the user sees "The service is unavailable" (SC33) with Try again. A retry cannot fix a bad request.',
+     ux:['At check slots the generic screen offers Try again, which cannot help (the Mural need says retrying will not help).','At booking the heading says the user cannot "access" GP appointments, which suggests a permission problem rather than a failed request.','No error reference is shown on the booking screen to quote to support.'],
+     needAdd:['Be told not to retry and be given the error reference to quote.']},
+   '401':{note:'Handled globally by the sign-in layer for every step, so the same screen (ES02) shows wherever the session ends.',
+     ux:['Two versions exist (Log in, or Continue). Choose one and keep it consistent.','A booking in progress is lost. The screen warns but does not offer to resume.'],needAdd:[]},
+   '500':{note:'The same 500 shows two headings: "Cannot show appointments" when checking or viewing (A-GP15b, A-GP15a) and "Cannot access GP appointments" when booking or cancelling (A-GP14). The booking screen has no Try again button; the check, view and cancel screens do.',
+     ux:['Headings differ ("show" vs "access") for the same fault.','At booking the user cannot tell whether the booking was made. The screen should say to check upcoming appointments before trying again.'],
+     needAdd:['Know whether my booking or cancellation went through before I try again.']},
+   '502':{note:'Same step-based screens as 500. The error reference depends on the GP system: EMIS 4e, TPP 4t.',
+     ux:['Rate limiting (429) is shown as a generic fault, so the advice is not specific to a busy GP system.','Headings change by step for the same cause.','At booking the user cannot tell whether the booking went through.'],
+     needAdd:['Know whether my booking or cancellation went through before I try again.']},
+   '504':{note:'At check slots and view appointments, 504 shows "Cannot show GP appointments" while 500 and 502 show "Cannot show appointments", so the heading differs for the same kind of failure. A timeout at booking or cancelling can happen after the GP system has already acted. The error reference depends on the GP system: EMIS ze, TPP zt.',
+     ux:['A timeout on booking or cancelling may mean the action worked. The screen should tell users to check their appointments before trying again.','The copy is the same as for 500 and 502, although retrying is more likely to help after a timeout.'],
+     needAdd:['Know whether my booking or cancellation went through.']},
+   '599':{note:'The dedicated session screen ("We could not connect to your GP", A-GP19) is not reached when checking slots or viewing. The app classifies 599 as "service unavailable", so the user sees "The service is unavailable" with Try again (SC33). At booking and cancelling the default "The service is unavailable" screen shows. The error reference is the code of the underlying cause: 3p, 3c, 3e, 3t, 3ee or 3y.',
+     ux:['The Mural says 599 occurs only on GET requests, but 9 booking requests returned it.','The generic screen gives no reason and no error reference, so a GP session problem looks the same as a general outage.'],needAdd:[]},
+   '598':{note:'The older Confluence error inventory lists 598 against SC05b "Cannot connect to the internet". In the live backend 598 means GP session required and starts the on-demand GP session, so that mapping is out of date.',
+     ux:['The loading page has no text, so users are not told why the app is connecting or what happens next.','No message appears if the connection step is slow or fails; the general error handling would apply (to be tested in staging).'],
+     needAdd:['Be told briefly that the app is connecting to the GP surgery.']},
+   '467':{note:'467 returns a bare status with no error reference and no matching screen branch, so the user may see a generic error or none. To be validated in staging.',
+     ux:['What the user sees is unknown; a silent failure would leave them with no next step.'],needAdd:[]}
+  };
+  /* concise content per code (replaces the longer text in CODES and UX) */
+  var GP='Give another way to finish: contact the GP surgery directly.',U111='Add "For urgent medical advice": use 111 online or call 111.',TS='Add "For technical support" with the error code and a link to contact the NHS App team.',HEAD='Heading starts "There is a problem" plus the feature.',RETRY='One secondary "Try again" button, used once. A second failure leads to "There is still a problem …" with other ways to finish.';
+  var CONCISE={
+   '200z':{cause:'The GP system returned no slots, so the API sends an empty list with a 200 response. It is part of the normal journey, not an error code.',
+     pain:['Users do not know what to do next.','Not clear when appointments will be available.','The "What you can do next" options are not clearly labelled.'],
+     need:["As a user I need clear alternatives, such as an online consultation or contacting my surgery, to get help when no appointments are available, so that I can still get the care I need."],
+     extra:'50.54% of successful slot responses. EMIS 51.46%, TPP 48.69%.',
+     note:'AB04a is a related in-line message when a filter returns no slots. It is not counted here.',
+     gl:['Explain what has happened and what to do next.',GP,'Other NHS App services go in secondary card links, kept few.',U111]},
+   '403':{cause:'The GP system or practice has switched off online booking or cancelling for this patient. TPP practices can disable cancellation.',
+     pain:['Users do not know why, or what to do instead.','Many phone the surgery, where queues are long.','"Additional GP services" is not a familiar label.'],
+     need:["As a user I need to know why I cannot book or cancel online, with my surgery's contact details, to do it another way, so that I can still get or change my appointment."],
+     note:'One code, two screens: A-GP11 (check, book, view) and AB07f (cancel). The cancel screen has no "What you can do next" options.',
+     gl:['Tell users how to finish the task another way, such as contacting the GP surgery.','No "Try again": a retry will not change a practice setting.','Other NHS App services go in secondary card links.',U111]},
+   '409':{cause:'Booking: someone else, or the practice, took the slot first. Cancelling: the appointment was already cancelled, has passed, or cannot be found.',
+     pain:['Users cannot see appointments cancelled by their surgery, so manage appointments looks empty.','No guidance on what to do next.'],
+     need:["As a user I need to know the slot or appointment has gone, and how to choose another, to carry on without repeating the same action, so that I can still get my appointment."],
+     note:'At cancelling, 409 and 461 show the same screen and the same "too late" copy (AB07h, AB07g), whatever the reason.',
+     gl:['Explain in plain words what has happened and what to do next.','Booking: point to choosing another slot. Cancelling: say whether it is already cancelled or has passed.','No "Try again": repeating the same action will not work.',U111]},
+   '460':{cause:'The patient already has the maximum number of pending appointments the practice allows online.',
+     pain:['It looks like an error, but it is a practice rule.','Users are only told to contact the GP.','Manage appointments gives no hint about the limit.'],
+     need:["As a user I need to know I have reached my practice's booking limit, and how to cancel one or contact the surgery, to book what I need, so that I can get the care I need."],
+     note:'',
+     gl:['Say what has happened and what to do next: cancel an appointment or contact the surgery.','A secondary card link can take users to their existing appointments.',U111,'Expected outcomes should not use warning styling (team view, NHSO-2624).']},
+   '461':{cause:'The practice has set a cancellation cut-off and the user is inside it (for example within 2 or 48 hours of the start time).',
+     pain:['The cut-off differs by practice and is not shown.','Unclear how to contact the surgery.'],
+     need:["As a user I need to know it is too late to cancel online, and how to contact my surgery, to cancel another way, so that I can let them know I cannot attend."],
+     note:'461 and 409 share the same cancel screen.',
+     gl:['Say it is too late to cancel online and what to do: contact the GP surgery now.','Show how to contact the surgery directly.','No "Try again".',U111]},
+   '400':{cause:'The GP system rejected the request as incomplete or invalid. It is a technical fault, not a user mistake.',
+     pain:['"Try again" or "Back" does not help.','No next step and no error reference.'],
+     need:["As a user I need to know it is not my fault, and what to do instead, to get help with my appointment, so that I can still book or cancel."],
+     note:'A-GP13 shows only when booking. At check slots, cancel and view, 400 shows "The service is unavailable" with Try again (SC33).',
+     gl:[HEAD+' Avoid "bad request".','No "Try again" button. "Try again later" in the text only if it may be fixed later.',GP,U111,TS]},
+   '401':{cause:'The session ended after a period of inactivity. Raised by the NHS App sign-in layer, not the GP system.',
+     pain:['Two screen versions exist (Log in, or Continue).','A booking in progress is lost.'],
+     need:["As a user I need to know why I was signed out, and how to sign back in, to carry on, so that I can finish what I was doing."],
+     note:'Handled globally for every step (ES02).',
+     gl:['Do not show the app header or footer to a logged-out user.','Explain what happened without blaming the user.','Offer one clear action to get back in.']},
+   '500':{cause:'An unhandled fault inside the NHS App backend.',
+     pain:['Headings differ by step ("show" vs "access").'],
+     need:["As a user I need to know it is temporary, and whether my booking or cancellation went through, to decide whether to try again, so that I can avoid a double booking or a missed cancellation."],
+     note:'A-GP15b and A-GP15a show "Cannot show appointments". A-GP14 (book, cancel) shows "Cannot access GP appointments". The booking screen has no Try again.',
+     gl:[HEAD,RETRY,GP,U111,TS,'If a booking or cancellation was in progress, say what has happened to it (GDS).']},
+   '502':{cause:'The GP system returned an invalid or error response. Rate-limit (429) responses are also reported as 502.',
+     pain:['Rate limiting looks like a generic fault.','Headings change by step.'],
+     need:["As a user I need to know it is temporary, and whether my booking or cancellation went through, to decide whether to try again, so that I can avoid a double booking or a missed cancellation."],
+     note:'Same screens as 500. The error code depends on the GP system: EMIS 4e, TPP 4t.',
+     gl:[HEAD,RETRY,GP,U111,TS,'If a booking or cancellation was in progress, say what has happened to it (GDS).']},
+   '504':{cause:'The GP system did not reply within the time allowed (about 10 seconds).',
+     pain:['Same screen as 500 and 502, although the cause differs.'],
+     need:["As a user I need to know it is temporary, and whether my booking or cancellation went through, to try again with confidence, so that I can avoid a double booking or a missed cancellation."],
+     extra:'Returned by the NHS App backend when the GP system does not reply in time. It can occur at any step that calls the GP system.',
+     note:'AB04c and A-GP09 show "Cannot show GP appointments" when checking or viewing. A-GP14 shows "Cannot access GP appointments" when booking or cancelling. Code: EMIS ze, TPP zt.',
+     gl:[HEAD,'"Try again" suits a timeout. '+RETRY,GP,U111,TS,'If a booking or cancellation was in progress, say what has happened to it (GDS).']},
+   '599':{cause:'The app could not establish a session with the GP system because its response could not be used.',
+     pain:['The screen only says the service is unavailable.'],
+     need:["As a user I need to know the app could not connect to my GP surgery, and how to try again or contact them, to reach my appointments, so that I can book, view or cancel."],
+     extra:'Related code: 598 starts the GP session.',
+     note:'A-GP19 is not reached when checking or viewing: users see "The service is unavailable" (SC33). The error code is the cause\'s code (3p, 3c, 3e, 3t, 3ee or 3y). 9 booking requests also returned 599.',
+     gl:[HEAD,RETRY,GP,U111,TS]},
+   '598':{cause:'The user has no GP session yet. The app creates one on demand (loading page, GP connection step) and returns the user to the page.',
+     pain:['The loading page has no text.','If connecting fails, the user reaches a GP session error screen (599).'],
+     need:["As a user I need to be told the app is connecting to my GP surgery, to wait with confidence, so that I can reach my appointments without thinking something is wrong. (To be agreed)"],
+     extra:'Counts requests, not users. The app retries once a session exists.',
+     note:'Older Confluence maps 598 to SC05b "Cannot connect to the internet". In the live backend it means GP session required.',
+     gl:['The loading page is not an error screen.','If connecting fails, use an error screen, for example "There is a problem connecting to your GP surgery", with "Try again", the surgery contact and 111.']},
+   '467':{cause:'TPP reports an invalid patient ID. No front-end screen exists.',
+     pain:['What users see is unconfirmed.'],
+     need:["As a user I need a clear message when my record cannot be matched, to know what to do, so that I can get help. (To be validated)"],
+     note:'It returns a bare status with no error reference. To be validated in staging.',
+     gl:['If users can reach it, use an error screen: heading "There is a problem" plus the feature.',GP,U111,TS]}
+  };
+  var UCD={'200z':1,'403':1,'409':1,'460':1,'461':1};
+  function trackTag(c){return UCD[c.id]?'<span class="tag trk-u" title="Needs UCD redesign and testing">Uplift: UCD redesign</span>':'<span class="tag trk-q" title="Apply the NHS error screen pattern and GDS guidance; dev can build while UCD works on the others">Uplift: quick (dev)</span>'}
+  function codeSlide(c){
+    var tot=total(c),v=vol(tot),K=CONCISE[c.id];
+    var rows='';STEPS.forEach(function(s){
+      if(s.k==='manage')return;
+      var n=c.counts[s.k];
+      if(n===undefined)return;
+      rows+='<tr><td>'+s.s+'</td><td class="n">'+fmt(n)+'</td><td class="n">'+(c.pct[s.k]||'')+'</td></tr>';
+    });
+    var gal='';
+    c.screens.forEach(function(s,i){var key=c.id+'-'+i;gal+=figureHTML(key,getImg(key,'screens/'+s.img+'.jpg'),s.name,s.step,SID[s.img]||s.id||'','')});
+    if(!c.screens.length&&c.noScreen)gal='<p class="small" style="width:100%;margin:0 0 6px">'+c.noScreen+'</p>';
+    gal+='<div class="drop" tabindex="0" data-add="'+c.id+'" title="Click, drop or paste an image"><b>+ Add screenshot</b>Click to choose, drop an image here, or hover and paste</div>';
+    var fn='<sup>1</sup> Internal code: the NHS App error code used for the service desk reference. <sup>2</sup> Screen ID: content design reference. Type: '+c.label+' – '+(c.kind==='neg'?'an expected outcome, not a fault':c.kind==='tech'?'something is broken':'no dedicated screen')+'. Volume bands: see <a data-open="labels">labels and definitions</a>.';
+    var sec=document.createElement('section');sec.className='slide';sec.id='c-'+c.id;sec.setAttribute('data-title',c.code+' · '+c.name);
+    sec.innerHTML=
+      '<div class="head"><div class="bigcode '+(c.kind==='neg'?'neg':c.kind==='noui'?'noui':'')+'">'+c.code+'</div><div class="t"><h2>'+c.name+'</h2><div>'+kindTag(c)+stdTag(c)+trackTag(c)+'<span class="tag id" title="NHS App internal error code (service desk reference)">Internal code<sup>1</sup>: '+c.internal+'</span><span class="tag id" title="Content design screen ID">Screen ID<sup>2</sup>: '+(IDMAP[c.id]||c.ids)+'</span><span class="tag vol '+v[1]+'" title="Total requests across counted steps: '+fmt(tot)+'">'+v[0]+' volume · '+fmt(tot)+'</span></div><p class="small" style="margin:6px 0 0"><b>Origin:</b> '+c.origin+'. '+c.summary+'</p></div></div>'+
+      '<div class="cols">'+
+        '<div><div class="block"><h3>Where it occurs</h3>'+
+          '<table class="reqs"><tr><th>Step</th><th class="n">Requests</th><th class="n">% of step</th></tr>'+rows+'</table>'+(K.extra?'<div class="callout" style="margin-top:8px;font-size:15px">'+K.extra+'</div>':'')+(K.note?'<div class="callout warn" style="font-size:15px;margin-top:8px"><b class="t">Live code check</b>'+K.note+'</div>':'')+'</div></div>'+
+        '<div><div class="block"><h3>Root cause</h3><p style="margin:0">'+K.cause+'</p></div>'+
+          '<div class="block"><h3>User pain points</h3><ul>'+K.pain.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div>'+
+          '<div class="block"><h3>What the user needs</h3><ul>'+K.need.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div>'+
+          '<div class="block"><div class="callout ok" style="font-size:15px;margin:0"><b class="t">Per the NHS App error screen guideline</b><ul style="margin:4px 0">'+K.gl.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div></div></div>'+
+        '<div><div class="block"><h3>Screen'+(c.screens.length>1?'s':'')+' the user sees</h3><div class="gallery" data-gallery="'+c.id+'">'+gal+'</div></div></div>'+
+      '</div><div class="foot">'+fn+' Guideline: <a href="https://design-system.nhsapp.service.nhs.uk/patterns/error-page/" target="_blank" rel="noopener">NHS App design system, Error screens</a>. It also asks for no back link or breadcrumbs at the top, no jargon such as "500" or "bad request", no red warning text, and no blame.</div>';
+    return sec;
+  }
+  var marker=document.querySelector('section.slide[data-title="Reading the numbers"]');
+  CODES.forEach(function(c){marker.parentNode.insertBefore(codeSlide(c),marker)});
+
+  /* extras */
+  function loadExtras(){
+    CODES.forEach(function(c){
+      var list=[];try{list=JSON.parse(localStorage.getItem(EXTRAKEY+c.id)||'[]')}catch(e){}
+      var g=document.querySelector('[data-gallery="'+c.id+'"]'),add=g.querySelector('.drop');
+      list.forEach(function(u,i){add.insertAdjacentHTML('beforebegin',figureHTML(c.id+'-x'+i,u,'Added screenshot','Added by you','',i+1))});
+    });
+  }
+  function saveExtras(id){
+    var g=document.querySelector('[data-gallery="'+id+'"]');
+    var list=[].map.call(g.querySelectorAll('figure[data-extra] img'),function(i){return i.src});
+    store(EXTRAKEY+id,JSON.stringify(list));
+  }
+  function addImage(id,u){
+    var g=document.querySelector('[data-gallery="'+id+'"]'),add=g.querySelector('.drop'),n=g.querySelectorAll('figure[data-extra]').length;
+    add.insertAdjacentHTML('beforebegin',figureHTML(id+'-x'+n,u,'Added screenshot','Added by you','',n+1));saveExtras(id);
+  }
+  loadExtras();
+
+  /* gallery events */
+  var hover=null;
+  document.addEventListener('mouseover',function(e){hover=e.target.closest('figure.shot, .drop')});
+  document.addEventListener('click',function(e){
+    var act=e.target.closest('[data-act]');
+    if(act){
+      var f=act.closest('figure'),k=f.getAttribute('data-key'),gid=f.parentNode.getAttribute('data-gallery');
+      if(act.getAttribute('data-act')==='replace'){pick(function(u){f.querySelector('img').src=u;if(f.hasAttribute('data-extra'))saveExtras(gid);else store(IMGKEY+k,u)})}
+      if(act.getAttribute('data-act')==='reset'){try{localStorage.removeItem(IMGKEY+k)}catch(x){}var idx=k.split('-')[1],c=CODES.filter(function(z){return z.id===k.split('-')[0]})[0];f.querySelector('img').src='screens/'+c.screens[idx].img+'.jpg';toast('Image reset')}
+      if(act.getAttribute('data-act')==='remove'){f.remove();saveExtras(gid)}
+      return;
+    }
+    var add=e.target.closest('.drop');
+    if(add){pick(function(u){addImage(add.getAttribute('data-add'),u)});return}
+    var fig=e.target.closest('figure.shot');
+    if(fig){$('lb-img').src=fig.querySelector('img').src;$('lb-cap').textContent=fig.querySelector('figcaption b').textContent+' – '+fig.querySelector('figcaption').lastChild.textContent;openM($('m-lb'));return}
+    var cat=e.target.closest('[data-open]');
+    if(cat){var id=cat.getAttribute('data-open');if(id==='labels'){goTitle('Labels and definitions')}else{goId(id)}}
+  });
+  ['dragover','dragenter'].forEach(function(t){document.addEventListener(t,function(e){var el=e.target.closest('figure.shot, .drop');if(el){e.preventDefault();el.classList.add('over')}})});
+  ['dragleave','drop'].forEach(function(t){document.addEventListener(t,function(e){var el=e.target.closest('figure.shot, .drop');if(el)el.classList.remove('over')})});
+  document.addEventListener('drop',function(e){
+    var el=e.target.closest('figure.shot, .drop');if(!el)return;e.preventDefault();
+    var f=e.dataTransfer.files[0];if(!f||f.type.indexOf('image')!==0)return;
+    toDataURL(f,function(u){applyTo(el,u)})
+  });
+  function applyTo(el,u){
+    if(el.classList.contains('drop')){addImage(el.getAttribute('data-add'),u)}
+    else{var k=el.getAttribute('data-key'),gid=el.parentNode.getAttribute('data-gallery');el.querySelector('img').src=u;if(el.hasAttribute('data-extra'))saveExtras(gid);else store(IMGKEY+k,u)}
+  }
+  document.addEventListener('paste',function(e){
+    var items=(e.clipboardData||{}).items||[];var file=null;for(var i=0;i<items.length;i++){if(items[i].type.indexOf('image')===0){file=items[i].getAsFile();break}}
+    if(!file)return;e.preventDefault();
+    var target=hover&&hover.closest('.slide.active')?hover:null;
+    if(!target){var a=document.querySelector('.slide.active .drop');target=a}
+    if(!target){toast('Open a code slide first, then paste');return}
+    toDataURL(file,function(u){applyTo(target,u)});
+  });
+
+  /* ---------- catalogue ---------- */
+  (function(){
+    var h='';
+    CODES.forEach(function(c){c.screens.forEach(function(s,i){h+='<figure data-open="c-'+c.id+'" tabindex="0" title="Open '+c.code+'"><img src="screens/'+s.img+'.jpg" alt="'+esc(s.name)+'"><figcaption><b>'+c.code+'</b> '+esc(s.name)+'</figcaption></figure>'})});
+    $('catalogue').innerHTML=h;
+  })();
+
+  /* ---------- sortable tables ---------- */
+  function num(v){var n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?-Infinity:n}
+  function sortable(tb){
+    [].forEach.call(tb.querySelectorAll('th[data-sort]'),function(th){
+      th.tabIndex=0;th.setAttribute('role','button');
+      function sort(){
+        var idx=[].indexOf.call(th.parentNode.children,th),asc=!th.classList.contains('asc');
+        [].forEach.call(th.parentNode.children,function(x){x.classList.remove('asc','desc')});th.classList.add(asc?'asc':'desc');
+        var body=tb.tBodies[0],rows=[].slice.call(body.rows);
+        var fixed=rows.filter(function(r){return r.classList.contains('total')||r.classList.contains('success')});
+        var data=rows.filter(function(r){return fixed.indexOf(r)<0});
+        var isNum=th.getAttribute('data-sort')==='num';
+        data.sort(function(a,b){var x=a.cells[idx],y=b.cells[idx];var r=isNum?num(x.getAttribute('data-v')||x.textContent)-num(y.getAttribute('data-v')||y.textContent):x.textContent.localeCompare(y.textContent);return asc?r:-r});
+        fixed.concat(data).forEach(function(r){body.appendChild(r)});
+      }
+      th.onclick=sort;th.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();sort()}};
+    });
+  }
+  renderMatrix();
+  [].forEach.call(document.querySelectorAll('table'),function(t){if(t.id!=='matrix')sortable(t)});
+  $('matrix').addEventListener('keydown',function(e){if(e.key==='Enter'){var r=e.target.closest('tr[data-open]');if(r)goId(r.getAttribute('data-open'))}});
+
+  /* ---------- deck engine ---------- */
+  var slides=[].slice.call(document.querySelectorAll('section.slide'));
+  var cur=0,KEY='gp-audit-notes-v1',notes={};try{notes=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+  var jump=$('jump'),txt=$('notes-text');
+  slides.forEach(function(s,i){
+    if(!s.id)s.id='s'+(i+1);
+    var o=document.createElement('option');o.value=i;o.textContent=(i+1)+'. '+s.getAttribute('data-title');jump.appendChild(o);
+    var b=document.createElement('button');b.type='button';b.textContent=(i+1)+'. '+s.getAttribute('data-title');b.onclick=function(){go(i);closeM($('m-ov'))};$('ov-grid').appendChild(b);
+  });
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(notes))}catch(e){}}
+  function toast(m){var t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(function(){t.style.display='none'},2200)}
+  function go(i){
+    cur=Math.max(0,Math.min(slides.length-1,i));
+    slides.forEach(function(s,k){s.classList.toggle('active',k===cur)});
+    $('count').textContent=(cur+1)+' / '+slides.length;
+    $('progress').firstElementChild.style.width=((cur+1)/slides.length*100)+'%';
+    $('back').disabled=cur===0;$('next').disabled=cur===slides.length-1;
+    $('back').style.opacity=cur===0?.4:1;$('next').style.opacity=cur===slides.length-1?.4:1;
+    jump.value=cur;$('slides').scrollTop=0;
+    $('notes-title').textContent=slides[cur].getAttribute('data-title');
+    txt.value=notes[slides[cur].id]||'';dot();
+    [].forEach.call($('ov-grid').children,function(b,k){b.classList.toggle('cur',k===cur)});
+    history.replaceState(null,'','#'+slides[cur].id);
+  }
+  function goId(id){var i=slides.findIndex(function(s){return s.id===id});if(i>-1)go(i)}
+  function goTitle(t){var i=slides.findIndex(function(s){return s.getAttribute('data-title')===t});if(i>-1)go(i)}
+  function dot(){$('notes-dot').classList.toggle('on',!!(notes[slides[cur].id]||'').trim())}
+  function openM(m){m.classList.add('open')}function closeM(m){m.classList.remove('open')}
+  $('back').onclick=function(){go(cur-1)};$('next').onclick=function(){go(cur+1)};
+  jump.onchange=function(){go(+jump.value)};
+  document.addEventListener('click',function(e){
+    var g=e.target.closest('[data-go]');if(g)go(cur+1);
+    if(e.target.matches('[data-close]'))closeM(e.target.closest('.modal'));
+    if(e.target.classList.contains('modal'))closeM(e.target);
+  });
+  $('btn-ov').onclick=function(){openM($('m-ov'))};$('btn-help').onclick=function(){openM($('m-help'))};
+  $('btn-print').onclick=function(){window.print()};
+  function toggleNotes(){var o=document.body.classList.toggle('notes-open');$('btn-notes').setAttribute('aria-pressed',o);if(o)txt.focus()}
+  $('btn-notes').onclick=toggleNotes;
+  document.addEventListener('keydown',function(e){
+    var t=e.target.tagName;if(t==='TEXTAREA'||t==='SELECT'||t==='INPUT')return;
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    var k=e.key;
+    if(k==='ArrowRight'||k===' '||k==='PageDown'){if(e.target.closest('tr[data-open],figure,.drop,button')&&k===' ')return;e.preventDefault();go(cur+1)}
+    else if(k==='ArrowLeft'||k==='PageUp'){e.preventDefault();go(cur-1)}
+    else if(k==='Home')go(0);else if(k==='End')go(slides.length-1);
+    else if(k==='n'||k==='N')toggleNotes();
+    else if(k==='o'||k==='O')openM($('m-ov'));
+    else if(k==='p'||k==='P')window.print();
+    else if(k==='?')openM($('m-help'));
+    else if(k==='Escape')[].forEach.call(document.querySelectorAll('.modal.open'),closeM);
+  });
+  txt.addEventListener('input',function(){notes[slides[cur].id]=txt.value;save();dot()});
+  $('notes-clear').onclick=function(){delete notes[slides[cur].id];save();txt.value='';dot();toast('Note cleared')};
+  function allNotes(){var o='# IM1 GP appointments error audit: deck notes\n\n';slides.forEach(function(s,i){var n=(notes[s.id]||'').trim();if(n)o+='## '+(i+1)+'. '+s.getAttribute('data-title')+'\n\n'+n+'\n\n'});return o}
+  $('notes-export').onclick=function(){var b=new Blob([allNotes()],{type:'text/markdown'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='gp-appointments-audit-notes.md';document.body.appendChild(a);a.click();a.remove();toast('Notes exported')};
+  $('notes-copy').onclick=function(){if(navigator.clipboard)navigator.clipboard.writeText(allNotes()).then(function(){toast('Notes copied')})};
+
+  var h=(location.hash||'').replace('#','');
+  var start=slides.findIndex(function(s){return s.id===h});
+  go(start>-1?start:0);
+})();
+</script>
+</body>
+</html>
